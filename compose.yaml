@@ -1,0 +1,15 @@
+version: "3"
+
+services:
+  server:
+    image: "http-over-uds-server:dev"
+    volumes:
+      - server-uds:/app/socket/
+  client:
+    image: "http-over-uds-client:dev"
+    entrypoint: ["sleep", "infinity"]
+    volumes:
+      - server-uds:/app/socket/:ro
+
+volumes:
+  server-uds:
