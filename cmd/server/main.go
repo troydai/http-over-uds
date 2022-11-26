@@ -10,9 +10,17 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+
+	"github.com/troydai/http-over-uds/internal/payload"
 )
 
-const _udsPath = "socket/server.socks"
+const (
+	_udsPath = "socket/server.socks"
+)
+
+var (
+	_payload = payload.MustGenRandomBytes(512)
+)
 
 func main() {
 	logger, err := zap.NewDevelopment()
@@ -33,7 +41,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("pass: http over uds"))
+		w.Write(_payload)
 	})
 
 	server := http.Server{

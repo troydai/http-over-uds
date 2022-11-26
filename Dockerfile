@@ -22,4 +22,8 @@ FROM alpine:3.16 AS client
 
 RUN apk add busybox curl
 
-CMD exec /bin/sh -c "trap : TERM INT; sleep 9999999999d & wait"
+WORKDIR /app
+COPY --from=builder /src/artifacts/bin/benchmark ./benchmark
+
+CMD /app/benchmark
+# CMD exec /bin/sh -c "trap : TERM INT; sleep 9999999999d & wait"

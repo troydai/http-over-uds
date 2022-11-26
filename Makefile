@@ -2,6 +2,7 @@
 build:
 	@ mkdir -p artifacts/bin
 	@ go build -o artifacts/bin/server cmd/server/main.go 
+	@ go build -o artifacts/bin/benchmark cmd/benchmark/main.go 
 
 .PHONY: local-server
 local-server:
@@ -19,8 +20,11 @@ client-image:
 	@ docker build . -t http-over-uds-client:dev --target client
 
 .PHONY: up
-up:
-	@ docker-compose up
+up: down images
+	@ docker-compose up \
+		--abort-on-container-exit \
+		--remove-orphans
+	@ docker-compose down --remove-orphans -v
 
 .PHONY: down
 down:

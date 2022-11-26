@@ -5,9 +5,17 @@ services:
     image: "http-over-uds-server:dev"
     volumes:
       - server-uds:/app/socket/
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 512M
   client:
     image: "http-over-uds-client:dev"
-    entrypoint: ["sleep", "infinity"]
+    environment:
+      - HOU_BENCHMARK_UDS=/app/socket/server.socks
+      - HOU_BENCHMARK_CONCURRENCY=16
+      - HOU_BENCHMARK_DURATION=10s
     volumes:
       - server-uds:/app/socket/:ro
 
