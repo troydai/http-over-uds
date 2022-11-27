@@ -8,13 +8,15 @@ import (
 )
 
 type Series struct {
+	name        string
 	latencies   []float64
 	errors      []error
 	statusCodes []int
 }
 
-func NewSeries() *Series {
+func NewSeries(name string) *Series {
 	return &Series{
+		name:        name,
 		latencies:   make([]float64, 0),
 		errors:      make([]error, 0),
 		statusCodes: make([]int, 0),
@@ -22,8 +24,8 @@ func NewSeries() *Series {
 }
 
 // Merge creates a new Series and merge the given ones
-func Merge(others ...*Series) *Series {
-	merged := &Series{}
+func Merge(name string, others ...*Series) *Series {
+	merged := &Series{name: name}
 
 	for _, o := range others {
 		merged.latencies = append(merged.latencies, o.latencies...)
@@ -45,6 +47,10 @@ func (s *Series) Append(resp *http.Response, err error, beginning time.Time) {
 	}
 
 	s.errors = append(s.errors, err)
+}
+
+func (s *Series) Name() string {
+	return s.name
 }
 
 func (s *Series) Len() int {
@@ -94,7 +100,7 @@ func (s *Series) StatusCodeMap() map[int]float64 {
 	return rate
 }
 
-func (s *Series) Summary(name string) string {
+func (s *Series) PresentData() []string {
 	p99, p95, p50 := s.LatencyDistribution()
 
 	statusCodeDistribution := ""
@@ -102,10 +108,16 @@ func (s *Series) Summary(name string) string {
 		if statusCodeDistribution != "" {
 			statusCodeDistribution += ", "
 		}
-		statusCodeDistribution += fmt.Sprintf("%d=%4.2f%%", code, rate*100)
+		statusCodeDistribution += fmt.Sprintf("%d=%2.f%%", code, rate*100)
 	}
 
-	return fmt.Sprintf(
-		"%s: count %6d, err: %4.2f%%, p99: %6.2f, p95: %6.2f, p50: %6.2f, status: %v",
-		name, s.Len(), s.ErrorRate()*100, p99, p95, p50, statusCodeDistribution)
+	return []string{
+		s.name,
+		fmt.Sprintf("%d", s.Len()),
+		fmt.Sprintf("%2.f", s.ErrorRate()*100),
+		fmt.Sprintf("%.1f", p99),
+		fmt.Sprintf("%.1f", p95),
+		fmt.Sprintf("%.1f", p50),
+		statusCodeDistribution,
+	}
 }
