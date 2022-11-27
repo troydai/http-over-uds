@@ -2,6 +2,7 @@ package tablify
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/troydai/http-over-uds/internal/summary"
@@ -30,15 +31,21 @@ func GetLines(data []*summary.Series) []string {
 		template += fmt.Sprintf("%%%ds  ", w)
 	}
 
-	// header := fmt.Sprintf(template, toAny(strings.Split(_columns, ","))...)
-	retval := []string{}
-
+	var retval []string
 	for _, s := range content {
 		line := fmt.Sprintf(template, toAny(s)...)
 		retval = append(retval, line)
 	}
 
 	return retval
+}
+
+func Print(w io.Writer, data []*summary.Series) {
+	fmt.Fprintln(w)
+	for _, l := range GetLines(data) {
+		fmt.Fprintln(w, l)
+	}
+	fmt.Fprintln(w)
 }
 
 func toAny(s []string) []interface{} {

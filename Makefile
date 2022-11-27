@@ -19,13 +19,13 @@ server-image:
 client-image:
 	@ docker build . -t http-over-uds-client:dev --target client
 
-.PHONY: up
-up: down images
+.PHONY: benchmark
+benchmark: clearn images
 	@ docker-compose up \
 		--abort-on-container-exit \
 		--remove-orphans
 	@ docker-compose down --remove-orphans -v
 
-.PHONY: down
-down:
+.PHONY: clearn
+clean:
 	@ docker-compose down --remove-orphans -v

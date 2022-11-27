@@ -6,11 +6,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/caarlos0/env/v6"
-	"go.uber.org/zap"
 
 	"github.com/troydai/http-over-uds/internal/summary"
 	"github.com/troydai/http-over-uds/internal/tablify"
@@ -23,34 +23,33 @@ type envVars struct {
 }
 
 func main() {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		log.Fatalf("fail to create logger: %s", err.Error())
-	}
-
 	var ev envVars
 	if err := env.Parse(&ev); err != nil {
-		logger.Fatal("fail to load environment variables", zap.Error(err))
+		log.Fatalf("fail to load environment variables: %v", err.Error())
 	}
 
-	if len(ev.Concurrency) == 1 {
-		series := benchmark(ev.Concurrency[0], ev.UDSPath, ev.Duration, false)
-		series = append(series, summary.Merge("Total", series...))
-		for _, l := range tablify.GetLines(series) {
-			fmt.Println(l)
-		}
-	} else {
-		var series []*summary.Series
-		for _, c := range ev.Concurrency {
-			series = append(series, benchmark(c, ev.UDSPath, ev.Duration, true)...)
-		}
-		for _, l := range tablify.GetLines(series) {
-			fmt.Println(l)
-		}
+	fmt.Println("Starting warming run")
+	benchmark(1, ev.UDSPath, 5*time.Second)
+
+	var mergedSeries []*summary.Series
+	for _, c := range ev.Concurrency {
+		fmt.Printf("Starting run with %d concurrency.\n", c)
+		series := benchmark(c, ev.UDSPath, ev.Duration)
+		merged := summary.Merge(fmt.Sprintf("Total %d Clients", c), series...)
+
+		series = append(series, merged)
+		tablify.Print(os.Stdout, series)
+
+		mergedSeries = append(mergedSeries, merged)
+	}
+
+	if len(mergedSeries) > 0 {
+		fmt.Println("Summary of all the runs")
+		tablify.Print(os.Stdout, mergedSeries)
 	}
 }
 
-func benchmark(concurrency int, path string, duration time.Duration, summaryOnly bool) []*summary.Series {
+func benchmark(concurrency int, path string, duration time.Duration) []*summary.Series {
 	clients := make([]*http.Client, 0, concurrency)
 	for i := 0; i < int(concurrency); i++ {
 		client := http.Client{
@@ -80,10 +79,6 @@ func benchmark(concurrency int, path string, duration time.Duration, summaryOnly
 	}
 
 	wg.Wait()
-
-	if summaryOnly {
-		return []*summary.Series{summary.Merge(fmt.Sprintf("%3d Clients", concurrency), dataSeries...)}
-	}
 
 	return dataSeries
 }
