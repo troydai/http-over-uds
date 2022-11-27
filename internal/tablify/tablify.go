@@ -8,7 +8,7 @@ import (
 	"github.com/troydai/http-over-uds/internal/summary"
 )
 
-const _columns = ",Count,Error,p99,p95,p50,Status"
+const _columns = ",Count,Success,Error,p99,p95,p50,Status"
 
 func GetLines(data []*summary.Series) []string {
 	var content [][]string
@@ -40,10 +40,35 @@ func GetLines(data []*summary.Series) []string {
 	return retval
 }
 
-func Print(w io.Writer, data []*summary.Series) {
+func Print(w io.Writer, data []*summary.Series, digest, hasTotal bool) {
+	lines := GetLines(data)
+	header := lines[0]
+	lines = lines[1:]
+
+	var digestEffect bool
+
+	boundary := len(data)
+	if hasTotal {
+		boundary--
+	}
+	if digest && boundary > 10 {
+		boundary = 10
+		digestEffect = true
+	}
+
 	fmt.Fprintln(w)
-	for _, l := range GetLines(data) {
-		fmt.Fprintln(w, l)
+	fmt.Fprintln(w, header)
+
+	for i := 0; i < boundary; i++ {
+		fmt.Fprintln(w, lines[i])
+	}
+
+	if digestEffect {
+		fmt.Fprintln(w, "... omit other samples beyond the first 10 ...")
+	}
+
+	if hasTotal {
+		fmt.Fprintln(w, lines[len(lines)-1])
 	}
 	fmt.Fprintln(w)
 }

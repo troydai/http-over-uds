@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/caarlos0/env/v6"
 
+	"github.com/troydai/http-over-uds/internal/benchclient"
 	"github.com/troydai/http-over-uds/internal/summary"
 	"github.com/troydai/http-over-uds/internal/tablify"
 )
@@ -38,35 +37,27 @@ func main() {
 		merged := summary.Merge(fmt.Sprintf("Total %d Clients", c), series...)
 
 		series = append(series, merged)
-		tablify.Print(os.Stdout, series)
+		tablify.Print(os.Stdout, series, true, true)
 
 		mergedSeries = append(mergedSeries, merged)
 	}
 
 	if len(mergedSeries) > 0 {
 		fmt.Println("Summary of all the runs")
-		tablify.Print(os.Stdout, mergedSeries)
+		tablify.Print(os.Stdout, mergedSeries, false, false)
 	}
 }
 
 func benchmark(concurrency int, path string, duration time.Duration) []*summary.Series {
-	clients := make([]*http.Client, 0, concurrency)
+	agents := make([]*benchclient.Agent, 0, concurrency)
 	for i := 0; i < int(concurrency); i++ {
-		client := http.Client{
-			Transport: &http.Transport{
-				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					var d net.Dialer
-					return d.DialContext(ctx, "unix", path)
-				},
-			},
-		}
-		clients = append(clients, &client)
+		agents = append(agents, benchclient.New(path, 0))
 	}
 
 	wg := &sync.WaitGroup{}
 	wg.Add(concurrency)
 
-	dataSeries := make([]*summary.Series, len(clients))
+	dataSeries := make([]*summary.Series, len(agents))
 	for idx := range dataSeries {
 		dataSeries[idx] = summary.NewSeries(fmt.Sprintf("Client-%d", idx))
 	}
@@ -75,25 +66,10 @@ func benchmark(concurrency int, path string, duration time.Duration) []*summary.
 	defer cancel()
 
 	for i := 0; i < int(concurrency); i++ {
-		startClient(ctx, wg, clients[i], dataSeries[i])
+		agents[i].Start(ctx, wg, dataSeries[i].Append)
 	}
 
 	wg.Wait()
 
 	return dataSeries
-}
-
-func startClient(ctx context.Context, wg *sync.WaitGroup, client *http.Client, series *summary.Series) {
-	go func() {
-		defer wg.Done()
-		for {
-			if ctx.Err() != nil {
-				return
-			}
-
-			beginning := time.Now()
-			resp, err := client.Get("http://localhost")
-			series.Append(resp, err, beginning)
-		}
-	}()
 }

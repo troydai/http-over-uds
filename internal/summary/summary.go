@@ -81,6 +81,16 @@ func (s *Series) ErrorRate() float64 {
 	return errCount / float64(len(s.errors))
 }
 
+func (s *Series) SuccessCount() int {
+	total := s.Len()
+	for _, e := range s.errors {
+		if e != nil {
+			total--
+		}
+	}
+	return total
+}
+
 func (s *Series) StatusCodeMap() map[int]float64 {
 	r := make(map[int]int)
 	for _, sc := range s.statusCodes {
@@ -113,7 +123,8 @@ func (s *Series) PresentData() []string {
 
 	return []string{
 		s.name,
-		fmt.Sprintf("%d", s.Len()),
+		fmt.Sprintf("%d", s.Len()),          // total attemps
+		fmt.Sprintf("%d", s.SuccessCount()), // total success
 		fmt.Sprintf("%2.f", s.ErrorRate()*100),
 		fmt.Sprintf("%.1f", p99),
 		fmt.Sprintf("%.1f", p95),
