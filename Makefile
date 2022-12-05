@@ -26,6 +26,11 @@ benchmark: clearn images
 		--remove-orphans
 	@ docker-compose down --remove-orphans -v
 
+.PHONY: up
+up:
+	@ docker-compose up \
+		--remove-orphans
+
 .PHONY: clearn
 clean:
 	@ docker-compose down --remove-orphans -v
